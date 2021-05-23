@@ -7,9 +7,9 @@ We currently implement two signatures:
 ## Signature extractor
 
 The core functionality is implemented in the two files [signature.py](signature.py) and [laplace.py](laplace.py).  Both heat and wave signatures are require the eigenvectors and eigenvalues of the generalized eigenvector problem
-$W\Phi=\lambda A\Phi$, where $L=A^{-1}W$ is the Laplace operator defined on the triangle mesh. 
+<img src="https://render.githubusercontent.com/render/math?math=W\Phi=\lambda A\Phi">, where <img src="https://render.githubusercontent.com/render/math?math=L=A^{-1}Wi"> is the Laplace operator defined on the triangle mesh. 
 
-$A$ is a diagonal matrix with areas associated with the area of vertices. $W$ defines the approximation of the laplace operator (see next section).
+***A*** is a diagonal matrix with areas associated with the area of vertices. ***W*** defines the approximation of the laplace operator (see next section).
 
 You can easily compute the signatures of every vertex in a mesh like this:
 ```python
