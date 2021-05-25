@@ -5,6 +5,22 @@ import trimesh
 
 import math
 
+def build_mass_matrix(mesh : trimesh.Trimesh):
+    """Build the sparse diagonal mass matrix for a given mesh
+
+    Args:
+        mesh (trimesh.Trimesh): Mesh to use.
+
+    Returns:
+        A sparse diagonal matrix of size (#vertices, #vertices).
+    """
+    areas = np.zeros(shape=(len(mesh.vertices)))
+    for face, area in zip(mesh.faces, mesh.area_faces):
+        areas[face] += area / 3.0
+
+    areas = areas * len(mesh.vertices) / (mesh.area / 3.0)
+    return scipy.sparse.diags(areas)
+
 def approx_methods():
     """Available laplace approximation types."""
     return [ 'beltrami', 'cotangens', 'mesh' ]

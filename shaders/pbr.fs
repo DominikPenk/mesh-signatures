@@ -3,12 +3,14 @@ out vec4 FragColor;
 in vec2 TexCoords;
 in vec3 WorldPos;
 in vec3 Normal;
-in vec3 albedo;
+in vec3 Color;
+
 
 // material parameters
 uniform float metallic;
 uniform float roughness;
 uniform float ao;
+uniform vec3  tint;
 
 // IBL
 uniform samplerCube irradianceMap;
@@ -84,6 +86,7 @@ void main()
 
     // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0 
     // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)    
+    vec3 albedo = Color * tint;
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic);
 

@@ -7,23 +7,6 @@ import math
 
 import laplace
 
-def build_mass_matrix(mesh : trimesh.Trimesh):
-    """Build the sparse diagonal mass matrix for a given mesh
-
-    Args:
-        mesh (trimesh.Trimesh): Mesh to use.
-
-    Returns:
-        A sparse diagonal matrix of size (#vertices, #vertices).
-    """
-    areas = np.zeros(shape=(len(mesh.vertices)))
-    for face, area in zip(mesh.faces, mesh.area_faces):
-        areas[face] += area / 3.0
-
-    areas = areas * len(mesh.vertices) / (mesh.area / 3.0)
-    return scipy.sparse.diags(areas)
-
-
 class SignatureExtractor(object):
     def __init__(self, mesh=None, n_basis=-1, approx='cotangens', path=None):
         self._initialized = False
@@ -43,7 +26,7 @@ class SignatureExtractor(object):
                                     Must be in ['beltrami', 'cotangens', 'mesh']. Defaults to 'cotangens'.
         """
         W = laplace.build_laplace_approximation_matrix(mesh, approx)
-        M = build_mass_matrix(mesh)
+        M = laplace.build_mass_matrix(mesh)
 
         self.n_basis = n
         self.evals, self.evecs = scipy.sparse.linalg.eigsh(W, M=M, k=n, which='SM')
@@ -77,6 +60,7 @@ class SignatureExtractor(object):
         else:
             times = np.array(times).flatten()
             assert len(times) == dim, f"Requested feature dimension and time steps array do not match: {dim} and {len(times)}"
+
 
         phi2       = np.square(self.evecs)
         exp        = np.exp(-self.evals[:, None]*times[None])
@@ -152,7 +136,7 @@ class SignatureExtractor(object):
         else:
             return self.wave_signatures(dim, return_x_ticks, x_ticks)
 
-    def heat_distances(self, query, dim : int, return_signature=False, times=None):
+    def heat_distances(self, query, dim : int, return_signature=False, times=None, cutoff=1.0):
         """Compute distances of all vertices to vertices in query based on heat signature
 
         Note:
@@ -161,8 +145,9 @@ class SignatureExtractor(object):
         Args:
             query (int, arrylike): queried indices
             dim (int): target index
-            return_signature (bool): If True the function returns a tuple (distances, signatures). Defaults to False
-            times (None, arraylike): Time steps used for signature computation. Defaults to None 
+            return_signature (bool, optional): If True the function returns a tuple (distances, signatures). Defaults to False
+            times (None, arraylike, optional): Time steps used for signature computation. Defaults to None 
+            cutoff (float, optional): Fraction of dimensionality to use for distance computation. Defaults to 1.0
 
         Returns:
             An array of shape (#vertices, len(query)) holding the heat signature distance 
@@ -170,7 +155,8 @@ class SignatureExtractor(object):
             tuple (distances, signature).  
         """
 
-        a = self.heat_signatures(dim, times=times)
+        e = max(0, int(cutoff*dim)) + 1
+        a = self.heat_signatures(dim, times=times)[..., :e]
         b = np.atleast_2d(a[np.array(query, dtype=np.int64)])
         a_dim = a.ndim
         b_dim = b.ndim
@@ -188,7 +174,7 @@ class SignatureExtractor(object):
         else:
             return dist_arr
 
-    def wave_distance(self, query, dim :int, return_signatures=False, energies=None):
+    def wave_distance(self, query, dim :int, return_signatures=False, energies=None, cutoff=1.0):
         """Compute distances of all vertices to vertices in query based on the wave signature
 
         Note:
@@ -199,14 +185,15 @@ class SignatureExtractor(object):
             dim (int): target index
             return_signature (bool): If True the function returns a tuple (distances, signatures). Defaults to False
             times (None, arraylike): Time steps used for signature computation. Defaults to None 
+            cutoff (float, optional): Fraction of dimensionality to use for distance computation. Defaults to 1.0
 
         Returns:
             An array of shape (#vertices, len(query)) holding the wave signature distance 
             of each vertex to the queried vertices. If return_signature is True this function returns a
             tuple (distances, signature).  
         """
-
-        a = self.wave_signatures(dim, energies=energies)
+        e = max(0, int(dim * cutoff)) + 1
+        a = self.wave_signatures(dim, energies=energies)[..., :e]
         b = np.atleast_2d(a[np.array(query, dtype=np.int64)])
         a_dim = a.ndim
         b_dim = b.ndim
@@ -224,7 +211,7 @@ class SignatureExtractor(object):
         else:
             return dist_arr
             
-    def feature_distance(self, query, dim : int, kernel : str, return_signatures=False, x_ticks=None):
+    def feature_distance(self, query, dim : int, kernel : str, return_signatures=False, x_ticks=None, cutoff=1.0):
         """Compute distances of all vertices to vertices in query based on a mesh signature
 
         Args:
@@ -233,6 +220,7 @@ class SignatureExtractor(object):
             kernel (str): Signature type to use. Must be in ['heat', 'wave']
             return_signature (bool): If True the function returns a tuple (distances, signatures). Defaults to False
             x_ticks (None, arraylike): x_ticks used for signature computation. Defaults to None 
+            cutoff (float, optional): Fraction of dimensionality to use for distance computation. Defaults to 1.0
 
         Returns:
             An array of shape (#vertices, len(query)) holding the signature distance 
@@ -242,9 +230,9 @@ class SignatureExtractor(object):
         assert kernel in ['heat', 'wave'], f"Invalid kernel type '{kernel}'. Must be in ['heat', 'wave']"
 
         if kernel == 'heat':
-            return self.heat_distances(query, dim, return_signatures, x_ticks)
+            return self.heat_distances(query, dim, return_signatures, x_ticks, cutoff)
         else:
-            return self.wave_distance(query, dim, return_signatures, x_ticks)
+            return self.wave_distance(query, dim, return_signatures, x_ticks, cutoff)
 
 
     def save(self, path : str):
