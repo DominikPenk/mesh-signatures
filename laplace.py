@@ -18,7 +18,6 @@ def build_mass_matrix(mesh : trimesh.Trimesh):
     for face, area in zip(mesh.faces, mesh.area_faces):
         areas[face] += area / 3.0
 
-    areas = areas * len(mesh.vertices) / (mesh.area / 3.0)
     return scipy.sparse.diags(areas)
 
 def approx_methods():

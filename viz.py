@@ -34,7 +34,7 @@ window = WindowContext((640, 480), "Mesh signature visualization")
 method = args.laplace
 
 r = np.linalg.norm(obj.mesh.vertices, axis=-1).max()
-r *= 2
+r *= 3
 
 light_data = np.array([
     [[-r,  r, r, 1.0], [50.0 * r*r, 50.0 * r*r, 50.0 *r*r, 1.0]],
@@ -57,7 +57,7 @@ else:
     extractor = signature.SignatureExtractor(obj.mesh, args.n_basis, args.approx)
 
 def update_viz(vid):
-    cmap = cm.get_cmap("hsv")
+    cmap = cm.get_cmap("viridis")
     ds = extractor.feature_distance(
         vid, 
         args.f_size, 
