@@ -2,7 +2,6 @@ import numpy as np
 import scipy
 import trimesh
 import logging
-import warnings
 
 import os
 import math
@@ -37,7 +36,7 @@ class SignatureExtractor(object):
                 import lapy
             except ImportError as e:
                 logging.error(
-                    "fem appxoimation only works if lapy is installed."
+                    "fem appxoimation only works if lapy is installed. "
                     "You can find lapy on github: https://github.com/Deep-MI/LaPy.\n"
                     "Install it with pip:\n"
                     "pip3 install --user git+https://github.com/Deep-MI/LaPy.git#egg=lapy")
@@ -57,9 +56,9 @@ class SignatureExtractor(object):
             from sksparse.cholmod import cholesky
             use_cholmod = True
         except ImportError as e:
-            warnings.warn(
-                "Package scikit-sparse not found (Cholesky decomp)"
-                "This leads to less efficient eigen decomposition")
+            logging.warn(
+                "Package scikit-sparse not found (Cholesky decomp). "
+                "This leads to less efficient eigen decomposition.")
             use_cholmod = False
 
         if use_cholmod:
