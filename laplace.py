@@ -22,7 +22,7 @@ def build_mass_matrix(mesh : trimesh.Trimesh):
 
 def approx_methods():
     """Available laplace approximation types."""
-    return [ 'beltrami', 'cotangens', 'mesh' ]
+    return [ 'beltrami', 'cotangens', 'mesh', 'fem' ]
     
 def build_laplace_betrami_matrix(mesh : trimesh.Trimesh):
     """Build the sparse laplace beltrami matrix of the given mesh M=(V, E).

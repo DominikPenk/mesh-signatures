@@ -6,6 +6,8 @@ import trimesh
 from .base import Context
 from . import buffers
 
+import math
+
 
 class Mesh(object):
 
@@ -23,6 +25,25 @@ class Mesh(object):
     @classmethod
     def uv_sphere(cls, radius : float = 1.0):
         mesh = trimesh.creation.uv_sphere(radius)
+        return cls(mesh)
+
+    @classmethod
+    def tetraeder(cls, edge_length : float = 1.0):
+        s = edge_length * 0.5
+        vertices = s * np.array([
+            [ 1,  0, -1.0/math.sqrt(2)],
+            [-1,  0, -1.0/math.sqrt(2)],
+            [ 0,  1,  1.0/math.sqrt(2)],
+            [ 0, -1,  1.0/math.sqrt(2)]
+        ], dtype=np.float32)
+        faces = np.array([
+            [0, 1, 2], [0, 2, 3], [0, 1, 3], [1, 2, 3]
+        ])
+        mesh = trimesh.Trimesh(
+            vertices=vertices,
+            faces=faces,
+            process=False)
+        mesh.fix_normals()
         return cls(mesh)
 
     @classmethod

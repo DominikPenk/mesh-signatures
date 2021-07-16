@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser(description='Mesh signature visualization')
 parser.add_argument('file', help='File to load')
 parser.add_argument('--n_basis', default='100', type=int, help='Number of basis used')
 parser.add_argument('--f_size', default='128', type=int, help='Feature size used')
-parser.add_argument('--approx', default='cotangens', type=str, help='Laplace approximation to use')
+parser.add_argument('--approx', default='cotangens', choices=laplace.approx_methods(), type=str, help='Laplace approximation to use')
 parser.add_argument('--laplace', help='File holding laplace spectrum')
 parser.add_argument('--kernel', type=str, default='heat', help='Feature type to extract. Must be in [heat, wave]')
 
@@ -76,6 +76,7 @@ shader = ShaderManager.Shader("./shaders/pbr.vs", "./shaders/pbr.fs")
 
 r = np.max(np.linalg.norm(obj.vertices, axis=-1))
 marker = Mesh.uv_sphere(0.02*r)
+
 
 while window.start_frame():
     imgui.begin("Settings", True)

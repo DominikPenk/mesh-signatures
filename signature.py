@@ -1,6 +1,7 @@
 import numpy as np
 import scipy
 import trimesh
+import logging
 
 import os
 import math
@@ -23,13 +24,34 @@ class SignatureExtractor(object):
             mesh (trimesh.Trimesh): Mesh to extract signatures from
             n (int): Number of eigenvalues and eigenvectors to compute.
             approx (str, optional): Laplace operator approximation to use. 
-                                    Must be in ['beltrami', 'cotangens', 'mesh']. Defaults to 'cotangens'.
+                                    Must be in ['beltrami', 'cotangens', 'mesh', 'fem']. Defaults to 'cotangens'.
         """
-        W = laplace.build_laplace_approximation_matrix(mesh, approx)
-        M = laplace.build_mass_matrix(mesh)
+        if approx not in ['beltrami', 'cotangens', 'mesh', 'fem']:
+            raise ValueError(
+                "Invalid approximation method must be one of ['beltrami', 'cotangens', 'mesh', 'fem']."
+                f"Got {approx}")   
+                
+        if approx == 'fem':
+            try:
+                import lapy
+            except ImportError as e:
+                logging.error(
+                    "fem appxoimation only works if lapy is installed."
+                    "You can find lapy on github: https://github.com/Deep-MI/LaPy.\n"
+                    "Install it with pip:\n"
+                    "pip3 install --user git+https://github.com/Deep-MI/LaPy.git#egg=lapy")
+                raise e
+            T = lapy.TriaMesh(mesh.vertices, mesh.faces)
+            solver = lapy.Solver(T)
+            self.n_basis = min(len(mesh.vertices) - 1, n)
+            self.evals, self.evecs = solver.eigs(k=self.n_basis)
+        
+        else:
+            W = laplace.build_laplace_approximation_matrix(mesh, approx)
+            M = laplace.build_mass_matrix(mesh)
 
-        self.n_basis = n
-        self.evals, self.evecs = scipy.sparse.linalg.eigsh(W, M=M, k=n, which='SM')
+            self.n_basis = min(len(mesh.vertices) - 1, n)
+            self.evals, self.evecs = scipy.sparse.linalg.eigsh(W, M=M, k=self.n_basis, which='SM')
 
         self._initialized = True
 
