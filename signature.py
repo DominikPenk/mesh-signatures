@@ -2,6 +2,7 @@ import numpy as np
 import scipy
 import trimesh
 import logging
+import warnings
 
 import os
 import math
@@ -30,7 +31,7 @@ class SignatureExtractor(object):
             raise ValueError(
                 "Invalid approximation method must be one of ['beltrami', 'cotangens', 'mesh', 'fem']."
                 f"Got {approx}")   
-                
+
         if approx == 'fem':
             try:
                 import lapy
@@ -43,15 +44,43 @@ class SignatureExtractor(object):
                 raise e
             T = lapy.TriaMesh(mesh.vertices, mesh.faces)
             solver = lapy.Solver(T)
-            self.n_basis = min(len(mesh.vertices) - 1, n)
-            self.evals, self.evecs = solver.eigs(k=self.n_basis)
-        
+            W = solver.stiffness
+            M = solver.mass
         else:
             W = laplace.build_laplace_approximation_matrix(mesh, approx)
             M = laplace.build_mass_matrix(mesh)
 
-            self.n_basis = min(len(mesh.vertices) - 1, n)
-            self.evals, self.evecs = scipy.sparse.linalg.eigsh(W, M=M, k=self.n_basis, which='SM')
+        self.n_basis = min(len(mesh.vertices) - 1, n)
+
+        sigma = -0.01
+        try:
+            from sksparse.cholmod import cholesky
+            use_cholmod = True
+        except ImportError as e:
+            warnings.warn(
+                "Package scikit-sparse not found (Cholesky decomp)"
+                "This leads to less efficient eigen decomposition")
+            use_cholmod = False
+
+        if use_cholmod:
+            chol = cholesky(W - sigma * M)
+            op_inv = scipy.sparse.linalg.LinearOperator(
+                            matvec=chol, 
+                            shape=W.shape,
+                            dtype=W.dtype)
+        else:
+            lu = scipy.sparse.linalg.splu(W - sigma * M)
+            op_inv = scipy.sparse.linalg.LinearOperator(
+                            matvec=lu.solve, 
+                            shape=W.shape,
+                            dtype=W.dtype)
+        
+
+        self.evals, self.evecs = scipy.sparse.linalg.eigsh(W, 
+                                                           self.n_basis, 
+                                                           M, 
+                                                           sigma=sigma,
+                                                           OPinv=op_inv)
 
         self._initialized = True
 
