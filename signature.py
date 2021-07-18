@@ -26,29 +26,7 @@ class SignatureExtractor(object):
             approx (str, optional): Laplace operator approximation to use. 
                                     Must be in ['beltrami', 'cotangens', 'mesh', 'fem']. Defaults to 'cotangens'.
         """
-        if approx not in ['beltrami', 'cotangens', 'mesh', 'fem']:
-            raise ValueError(
-                "Invalid approximation method must be one of ['beltrami', 'cotangens', 'mesh', 'fem']."
-                f"Got {approx}")   
-
-        if approx == 'fem':
-            try:
-                import lapy
-            except ImportError as e:
-                logging.error(
-                    "fem appxoimation only works if lapy is installed. "
-                    "You can find lapy on github: https://github.com/Deep-MI/LaPy.\n"
-                    "Install it with pip:\n"
-                    "pip3 install --user git+https://github.com/Deep-MI/LaPy.git#egg=lapy")
-                raise e
-            T = lapy.TriaMesh(mesh.vertices, mesh.faces)
-            solver = lapy.Solver(T)
-            W = solver.stiffness
-            M = solver.mass
-        else:
-            W = laplace.build_laplace_approximation_matrix(mesh, approx)
-            M = laplace.build_mass_matrix(mesh)
-
+        self.W, self.M = laplace.get_laplace_operator_approximation(mesh, approx)
         self.n_basis = min(len(mesh.vertices) - 1, n)
 
         sigma = -0.01
@@ -62,22 +40,22 @@ class SignatureExtractor(object):
             use_cholmod = False
 
         if use_cholmod:
-            chol = cholesky(W - sigma * M)
+            chol = cholesky(self.W - sigma * self.M)
             op_inv = scipy.sparse.linalg.LinearOperator(
                             matvec=chol, 
-                            shape=W.shape,
-                            dtype=W.dtype)
+                            shape=self.W.shape,
+                            dtype=self.W.dtype)
         else:
-            lu = scipy.sparse.linalg.splu(W - sigma * M)
+            lu = scipy.sparse.linalg.splu(self.W - sigma * self.M)
             op_inv = scipy.sparse.linalg.LinearOperator(
                             matvec=lu.solve, 
-                            shape=W.shape,
-                            dtype=W.dtype)
+                            shape=self.W.shape,
+                            dtype=self.W.dtype)
         
 
-        self.evals, self.evecs = scipy.sparse.linalg.eigsh(W, 
+        self.evals, self.evecs = scipy.sparse.linalg.eigsh(self.W, 
                                                            self.n_basis, 
-                                                           M, 
+                                                           self.M, 
                                                            sigma=sigma,
                                                            OPinv=op_inv)
 
@@ -105,15 +83,15 @@ class SignatureExtractor(object):
 
         if times is None:
             tmin  = 4 * math.log(10) / self.evals[-1]
-            tmax  = 4 * math.log(10) / self.evals[2]
+            tmax  = 4 * math.log(10) / self.evals[1]
             times = np.geomspace(tmin, tmax, dim)
         else:
             times = np.array(times).flatten()
             assert len(times) == dim, f"Requested feature dimension and time steps array do not match: {dim} and {len(times)}"
 
 
-        phi2       = np.square(self.evecs)
-        exp        = np.exp(-self.evals[:, None]*times[None])
+        phi2       = np.square(self.evecs[:, 1:])
+        exp        = np.exp(-self.evals[1:, None]*times[None])
         s          = np.sum(phi2[..., None]*exp[None], axis=1)
         heat_trace = np.sum(exp, axis=0)
         s          = s / heat_trace[None] 
@@ -153,7 +131,7 @@ class SignatureExtractor(object):
             assert len(energies) == dim, f"Requested featrue dimension and energies array do not match: {dim} and {len(energies)}"
 
         sigma        = 7.0 * (energies[-1] - energies[0]) / dim
-        phi2         = np.square(self.evecs)
+        phi2         = np.square(self.evecs[:, 1:])
         exp          = np.exp(-np.square(energies[None] - np.log(self.evals[:, None])) / (2.0 * sigma * sigma))
         s            = np.sum(phi2[..., None]*exp[None], axis=1)
         energy_trace = np.sum(exp, axis=0)
@@ -284,7 +262,6 @@ class SignatureExtractor(object):
         else:
             return self.wave_distance(query, dim, return_signatures, x_ticks, cutoff)
 
-
     def save(self, path : str):
         """Save the laplace spectrum (eigenvalues and eigenvectors) to a .npz file
 
@@ -314,3 +291,21 @@ class SignatureExtractor(object):
         self.n_basis = len(self.evals)
         self._initialized = True
 
+    @property
+    def stiffness(self):
+        if not self._initialized:
+            raise RuntimeError("Extractor not initialized")
+        return self.W
+    
+    @property
+    def mass(self):
+        if not self._initialized:
+            raise RuntimeError("Extractor not initialized")
+        return self.M
+
+    @property
+    def spectrum(self):
+        if not self._initialized:
+            raise RuntimeError("Extractor not initialized")
+        return self.evals
+        

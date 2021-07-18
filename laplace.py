@@ -1,6 +1,6 @@
 import numpy as np
 import scipy
-
+import logging
 import trimesh
 
 import math
@@ -20,9 +20,18 @@ def build_mass_matrix(mesh : trimesh.Trimesh):
 
     return scipy.sparse.diags(areas)
 
-def approx_methods():
+def approx_methods() -> list[str]:
     """Available laplace approximation types."""
-    return [ 'beltrami', 'cotangens', 'mesh', 'fem' ]
+    try:
+        import lapy
+        return [ 'beltrami', 'cotangens', 'mesh', 'fem' ]
+    except ImportError:
+        logging.warn(
+            "fem appxoimation only works if lapy is installed. "
+            "You can find lapy on github: https://github.com/Deep-MI/LaPy.\n"
+            "Install it with pip:\n"
+             "pip3 install --user git+https://github.com/Deep-MI/LaPy.git#egg=lapy")
+        return [ 'beltrami', 'contangens', 'mesh' ]        
     
 def build_laplace_betrami_matrix(mesh : trimesh.Trimesh):
     """Build the sparse laplace beltrami matrix of the given mesh M=(V, E).
@@ -145,3 +154,30 @@ def build_laplace_approximation_matrix(mesh : trimesh.Trimesh, approx = 'beltram
         return build_cotangens_matrix(mesh)
     else:
         return build_mesh_laplace_matrix(mesh)
+
+def get_laplace_operator_approximation(mesh : trimesh.Trimesh, 
+                                       approx = 'cotangens') -> tuple[np.ndarray, np.ndarray]:
+    """Computes a discrete approximation of the laplace-beltrami operator on
+    a given mesh. The approximation is given by a Mass matrix A and a weight or stiffness matrix W
+
+    Args:
+        mesh (trimesh.Trimesh): Input mesh
+        approx (str, optional): Laplace approximation to use See laplace.approx_methods() for possible values. Defaults to 'cotangens'.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray]: A tuple of sparse matrices (Stiffness, Mass)
+    """
+    if approx not in approx_methods():
+        raise ValueError(
+            f"Invalid approximation method must be one of {approx_methods}."
+            f"Got {approx}")
+    
+    if approx == 'fem':
+        import lapy
+        T = lapy.TriaMesh(mesh.vertices, mesh.faces)
+        solver = lapy.Solver(T)
+        return solver.stiffness, solver.mass
+    else:
+        W = build_laplace_approximation_matrix(mesh, approx)
+        M = build_mass_matrix(mesh)
+        return W, M

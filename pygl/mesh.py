@@ -55,7 +55,10 @@ class Mesh(object):
 
     def __init__(self, mesh : trimesh.Trimesh):
         self.mesh = mesh
-        self._vertex_colors = np.ones_like(self.mesh.vertices)
+        if hasattr(self.mesh, 'visual') and hasattr(self.mesh.visual, 'vertex_colors'):
+            self._vertex_colors = self.mesh.visual.vertex_colors.astype(np.float32)[:, :3] / 255.0
+        else:
+            self._vertex_colors = np.ones_like(self.mesh.vertices)
         self._vaos = {}
         self._buffers = {}
 
