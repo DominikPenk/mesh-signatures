@@ -101,11 +101,13 @@ class SignatureExtractor(object):
         else:
             return s
 
-    def wave_signatures(self, dim : int, return_energies=False, energies=None):
+    def wave_signatures(self, dim : int, variance : float = 6.0, return_energies=False, energies=None):
         """Compute the wave signature for all vertices
 
         Args:
             dim (int): Dimensionality (energy spectra) of the signature.
+            variance (float): variance of the WKS gaussian (wih respect to the difference of the two first eigenvalues). 
+                          For easy or precision tasks (eg. matching with only isometric deformations) you can take it smaller
             return_energies (bool, optional): If True the function returns a tuple (signature, energies) 
                                               otherwise only the signature is returned. Defaults to False.
             energies (arraylike, optional): Energie spectra used for signature computation.
@@ -122,18 +124,18 @@ class SignatureExtractor(object):
 
         assert self._initialized, "Signature extractor was not initialized"
 
+        log_e = np.log(np.maximum(np.abs(self.evals), 1e-6))
+        
         if energies is None:
-            emin = math.log(self.evals[1])
-            emax = math.log(self.evals[-1]) / 1.02
-            energies = np.linspace(emin, emax, dim)
+            energies = np.linspace(log_e[1], log_e[-1]/1.02, dim)
         else:
             energies = np.array(energies).flatten()
             assert len(energies) == dim, f"Requested featrue dimension and energies array do not match: {dim} and {len(energies)}"
 
-        sigma        = 7.0 * (energies[-1] - energies[0]) / dim
-        phi2         = np.square(self.evecs[:, 1:])
-        exp          = np.exp(-np.square(energies[None] - np.log(self.evals[:, None])) / (2.0 * sigma * sigma))
-        s            = np.sum(phi2[..., None]*exp[None], axis=1)
+        sigma        = variance * (energies[1] - energies[0])
+        phi2         = np.square(self.evecs)
+        exp          = np.exp(-np.square(energies[None] - log_e[:, None])) / (2.0 * sigma * sigma)
+        s            = np.sum((phi2[:, :, None]*exp[None]), axis=1)
         energy_trace = np.sum(exp, axis=0)
         s            = s / energy_trace[None] 
             
@@ -142,7 +144,7 @@ class SignatureExtractor(object):
         else:
             return s
 
-    def signatures(self, dim : int, kernel : str, return_x_ticks=False, x_ticks=None):
+    def signatures(self, dim : int, kernel : str, return_x_ticks=False, x_ticks=None, **kwargs):
         """Computes a signature for each vertex
 
         Args:
@@ -162,7 +164,10 @@ class SignatureExtractor(object):
         if kernel == 'heat':
             return self.heat_signatures(dim, return_x_ticks, x_ticks)
         else:
-            return self.wave_signatures(dim, return_x_ticks, x_ticks)
+            return self.wave_signatures(dim, 
+                                        return_energies=return_x_ticks, 
+                                        energies=x_ticks, 
+                                        **kwargs)
 
     def heat_distances(self, query, dim : int, return_signature=False, times=None, cutoff=1.0):
         """Compute distances of all vertices to vertices in query based on heat signature
