@@ -1,11 +1,13 @@
+import logging
+import math
+from typing import Literal
+
 import numpy as np
 import scipy
-import logging
 import trimesh
 
-import math
 
-def build_mass_matrix(mesh : trimesh.Trimesh):
+def build_mass_matrix(mesh : trimesh.Trimesh) -> scipy.sparse.diags:
     """Build the sparse diagonal mass matrix for a given mesh
 
     Args:
@@ -33,7 +35,7 @@ def approx_methods() -> list[str]:
              "pip3 install --user git+https://github.com/Deep-MI/LaPy.git#egg=lapy")
         return [ 'beltrami', 'contangens', 'mesh' ]        
     
-def build_laplace_betrami_matrix(mesh : trimesh.Trimesh):
+def build_laplace_betrami_matrix(mesh : trimesh.Trimesh) -> scipy.sparse.coo_matrix:
     """Build the sparse laplace beltrami matrix of the given mesh M=(V, E).
     This is a positive semidefinite matrix C:
 
@@ -58,7 +60,7 @@ def build_laplace_betrami_matrix(mesh : trimesh.Trimesh):
     A = scipy.sparse.coo_matrix((V, (IJ[..., 0], IJ[..., 1])), shape=(n, n), dtype=np.float64)
     return A
 
-def build_cotangens_matrix(mesh : trimesh.Trimesh):
+def build_cotangens_matrix(mesh : trimesh.Trimesh) -> scipy.sparse.coo_matrix:
     """Build the sparse cotangens weight matrix of the given mesh M=(V, E).
     This is a positive semidefinite matrix C:
 
@@ -99,7 +101,7 @@ def build_cotangens_matrix(mesh : trimesh.Trimesh):
     A = scipy.sparse.coo_matrix((V, (I, J)), shape=(n, n), dtype=np.float64)
     return A
 
-def build_mesh_laplace_matrix(mesh : trimesh.Trimesh):
+def build_mesh_laplace_matrix(mesh : trimesh.Trimesh) -> scipy.sparse.coo_matrix:
     """Build the sparse mesh laplacian matrix of the given mesh M=(V, E).
     This is a positive semidefinite matrix C:
 
@@ -129,7 +131,9 @@ def build_mesh_laplace_matrix(mesh : trimesh.Trimesh):
     A = scipy.sparse.coo_matrix((V, (I, J)), shape=(n, n), dtype=np.float64)
     return A
 
-def build_laplace_approximation_matrix(mesh : trimesh.Trimesh, approx = 'beltrami'):
+def build_laplace_approximation_matrix(mesh : trimesh.Trimesh, 
+                                       approx: Literal[ 'beltrami', 'cotangens', 'mesh', 'fem'] = 'beltrami'
+) -> scipy.sparse.coo_matrix:
     """Build the sparse mesh laplacian matrix of the given mesh M=(V, E).
     This is a positive semidefinite matrix C:
 
@@ -156,7 +160,8 @@ def build_laplace_approximation_matrix(mesh : trimesh.Trimesh, approx = 'beltram
         return build_mesh_laplace_matrix(mesh)
 
 def get_laplace_operator_approximation(mesh : trimesh.Trimesh, 
-                                       approx = 'cotangens') -> tuple[np.ndarray, np.ndarray]:
+                                       approx : Literal[ 'beltrami', 'cotangens', 'mesh', 'fem'] = 'cotangens'
+) -> tuple[scipy.sparse.coo_matrix, scipy.sparse.diags]:
     """Computes a discrete approximation of the laplace-beltrami operator on
     a given mesh. The approximation is given by a Mass matrix A and a weight or stiffness matrix W
 

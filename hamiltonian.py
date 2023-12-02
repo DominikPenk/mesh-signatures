@@ -2,34 +2,29 @@ import argparse
 import logging
 
 import glfw
-
 import imgui
-from imgui import extra
-from imgui_datascience import imgui_fig
-
-from pygl.context import WindowContext
-from pygl.buffers import *
-import pygl.shader as ShaderManager
-from pygl.camera import Camera
-from pygl.mesh import Mesh
-from pygl import transform
-
-from matplotlib import cm
 import matplotlib.pyplot as plt
 import scipy
+from imgui_datascience import imgui_fig
 
-import signature
-import laplace
+import msig
+import pygl.shader as ShaderManager
+from pygl import transform
+from pygl.buffers import *
+from pygl.camera import Camera
+from pygl.context import WindowContext
+from pygl.mesh import Mesh
 
-def compute_hamiltonian(extractor: signature.SignatureExtractor, 
+
+def compute_hamiltonian(extractor: msig.SignatureExtractor, 
                         v: np.ndarray):
     """Compute the spectrum of the hamiltonian operator
     See Hamiltonian Operator for Spectral Shape Analysis by Yoni Choukroun et al for detailed informations
     (http://arxiv.org/abs/1611.01990)
 
     Args:
-        extractor (signature.SignatureExtractor): The signature extractor holding the mesh spectrum
-        v (np.ndarray): A array containing a per vertex potential
+        extractor: The signature extractor holding the mesh spectrum
+        v: A array containing a per vertex potential
     """
     W = extractor.W
     M = extractor.M
@@ -40,7 +35,7 @@ def compute_hamiltonian(extractor: signature.SignatureExtractor,
         from sksparse.cholmod import cholesky
         use_cholmod = True
     except ImportError:
-        logging.warn(
+        logging.warning(
             "Package scikit-sparse not found (Cholesky decomp). "
             "This leads to less efficient eigen decomposition.")
         use_cholmod = False
@@ -69,7 +64,7 @@ def compute_hamiltonian(extractor: signature.SignatureExtractor,
 parser = argparse.ArgumentParser(description='Mesh signature visualization')
 parser.add_argument('file', help='File to load')
 parser.add_argument('--k', default='10', type=int, help='Number of eigenvalues and functions to compute')
-parser.add_argument('--approx', default='fem', choices=laplace.approx_methods(), type=str, help='Laplace approximation to use')
+parser.add_argument('--approx', default='fem', choices=msig.approx_methods(), type=str, help='Laplace approximation to use')
 parser.add_argument('--laplace', help='File holding laplace spectrum')
 
 args = parser.parse_args()
@@ -101,9 +96,9 @@ active_eigen_value_index = 1
         
 # Initialize signature extractor
 if args.laplace is not None:
-    extractor = signature.SignatureExtractor(path=args.laplace)
+    extractor = msig.SignatureExtractor(path=args.laplace)
 else:
-    extractor = signature.SignatureExtractor(obj.mesh, args.k, args.approx)
+    extractor = msig.SignatureExtractor(obj.mesh, args.k, args.approx)
 
 evals, evecs = compute_hamiltonian(extractor, potential)
 
@@ -112,15 +107,16 @@ print(extractor.evecs.shape)
 figure = plt.figure()
 plt.xlabel("Eigen Index")
 plt.ylabel("Eigen Value")
-plt.plot(np.arange(args.k), extractor.evals)
-plt.plot(np.arange(args.k), evals)
+plt.plot(np.arange(args.k), extractor.evals, label='Laplace')
+plt.plot(np.arange(args.k), evals, label='Hamiltonian')
+plt.legend()
 
 def update_viz():
     if show_potential:
         obj.vertex_colors = np.where(potential[:, None] == 1, [1, 0, 1], [1, 1, 1])
     else:
         used_evecs = evecs if show_hameltoninan else extractor.evecs
-        cmap = cm.get_cmap('seismic')
+        cmap = plt.get_cmap('seismic')
         vals = used_evecs[:, active_eigen_value_index]
         range = np.abs(vals).max()
         vals = 0.5 * (vals / range + 1)

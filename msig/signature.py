@@ -1,22 +1,31 @@
+import logging
+import math
+import os
+from typing import Literal, Optional
+
 import numpy as np
 import scipy
 import trimesh
-import logging
 
-import os
-import math
+from . import laplace
 
-import laplace
 
 class SignatureExtractor(object):
-    def __init__(self, mesh=None, n_basis=-1, approx='cotangens', path=None):
+    def __init__(self, 
+                 mesh:Optional[trimesh.Trimesh]=None, 
+                 n_basis:int=-1, 
+                 approx:Literal['beltrami', 'cotangens', 'mesh', 'fem']='cotangens', 
+                 path=None) -> None:
         self._initialized = False
         if path is not None:
             self.load(path)
         elif n_basis > 0 and mesh is not None:
             self.initialize(mesh, n_basis, approx)
 
-    def initialize(self, mesh : trimesh.Trimesh, n : int, approx='cotangens'):
+    def initialize(self, 
+                   mesh:trimesh.Trimesh, 
+                   n:int, 
+                   approx: Literal['beltrami', 'cotangens', 'mesh', 'fem']='cotangens') -> None:
         """Initializes the SignatureExtractor by computing eigenvectors and eigenvalues
         of the discrete laplace operator. 
 
@@ -61,7 +70,11 @@ class SignatureExtractor(object):
 
         self._initialized = True
 
-    def heat_signatures(self, dim : int, return_times=False, times=None):
+    def heat_signatures(self, 
+                        dim:int, 
+                        return_times:bool=False, 
+                        times:Optional[np.ndarray]=None
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Compute the heat signature for all vertices
 
         Args:
@@ -101,7 +114,11 @@ class SignatureExtractor(object):
         else:
             return s
 
-    def wave_signatures(self, dim : int, return_energies=False, energies=None):
+    def wave_signatures(self, 
+                        dim:int, 
+                        return_energies:bool=False, 
+                        energies:Optional[np.ndarray]=None
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Compute the wave signature for all vertices
 
         Args:
@@ -142,7 +159,12 @@ class SignatureExtractor(object):
         else:
             return s
 
-    def signatures(self, dim : int, kernel : str, return_x_ticks=False, x_ticks=None):
+    def signatures(self, 
+                   dim:int, 
+                   kernel:Literal['heat', 'wave'], 
+                   return_x_ticks:bool=False, 
+                   x_ticks:Optional[np.ndarray]=None
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Computes a signature for each vertex
 
         Args:
@@ -164,7 +186,13 @@ class SignatureExtractor(object):
         else:
             return self.wave_signatures(dim, return_x_ticks, x_ticks)
 
-    def heat_distances(self, query, dim : int, return_signature=False, times=None, cutoff=1.0):
+    def heat_distances(self, 
+                       query:int | np.ndarray, 
+                       dim:int, 
+                       return_signature:bool=False, 
+                       times:Optional[np.ndarray]=None, 
+                       cutoff:float=1.0
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Compute distances of all vertices to vertices in query based on heat signature
 
         Note:
@@ -202,7 +230,13 @@ class SignatureExtractor(object):
         else:
             return dist_arr
 
-    def wave_distance(self, query, dim :int, return_signatures=False, energies=None, cutoff=1.0):
+    def wave_distance(self, 
+                      query:int | np.ndarray, 
+                      dim:int, 
+                      return_signatures:bool=False, 
+                      energies:Optional[np.ndarray]=None, 
+                      cutoff:float=1.0
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Compute distances of all vertices to vertices in query based on the wave signature
 
         Note:
@@ -239,7 +273,14 @@ class SignatureExtractor(object):
         else:
             return dist_arr
             
-    def feature_distance(self, query, dim : int, kernel : str, return_signatures=False, x_ticks=None, cutoff=1.0):
+    def feature_distance(self, 
+                         query:int | np.ndarray, 
+                         dim:int, 
+                         kernel: Literal['heat', 'wave'], 
+                         return_signatures:bool=False, 
+                         x_ticks:Optional[np.ndarray]=None, 
+                         cutoff=1.0
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Compute distances of all vertices to vertices in query based on a mesh signature
 
         Args:
@@ -262,7 +303,7 @@ class SignatureExtractor(object):
         else:
             return self.wave_distance(query, dim, return_signatures, x_ticks, cutoff)
 
-    def save(self, path : str):
+    def save(self, path:str) -> None:
         """Save the laplace spectrum (eigenvalues and eigenvectors) to a .npz file
 
         Args:
@@ -275,7 +316,7 @@ class SignatureExtractor(object):
             os.makedirs(folder)
         np.savez_compressed(path, evals=self.evals, evecs=self.evecs)
 
-    def load(self, path):
+    def load(self, path:str) -> None:
         """Initialize by loading the laplace spectrum (eigenvalues and eigenvectors) from a .npz file
 
         Args:
@@ -292,19 +333,19 @@ class SignatureExtractor(object):
         self._initialized = True
 
     @property
-    def stiffness(self):
+    def stiffness(self) -> scipy.sparse.csr_matrix:
         if not self._initialized:
             raise RuntimeError("Extractor not initialized")
         return self.W
     
     @property
-    def mass(self):
+    def mass(self) -> scipy.sparse.csr_matrix:
         if not self._initialized:
             raise RuntimeError("Extractor not initialized")
         return self.M
 
     @property
-    def spectrum(self):
+    def spectrum(self) -> np.ndarray:
         if not self._initialized:
             raise RuntimeError("Extractor not initialized")
         return self.evals

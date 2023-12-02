@@ -3,7 +3,7 @@ import os
 
 import trimesh
 
-from signature import SignatureExtractor
+from msig import SignatureExtractor
 
 parser = argparse.ArgumentParser(description='Mesh signature visualization')
 parser.add_argument('files', help='File to load', nargs='+')

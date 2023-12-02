@@ -14,14 +14,13 @@ from pygl import transform
 
 from matplotlib import cm
 
-import signature
-import laplace
+import msig
 
 parser = argparse.ArgumentParser(description='Mesh signature visualization')
 parser.add_argument('file', help='File to load')
 parser.add_argument('--n_basis', default='100', type=int, help='Number of basis used')
 parser.add_argument('--f_size', default='128', type=int, help='Feature size used')
-parser.add_argument('--approx', default='cotangens', choices=laplace.approx_methods(), type=str, help='Laplace approximation to use')
+parser.add_argument('--approx', default='cotangens', choices=msig.approx_methods(), type=str, help='Laplace approximation to use')
 parser.add_argument('--laplace', help='File holding laplace spectrum')
 parser.add_argument('--kernel', type=str, default='heat', help='Feature type to extract. Must be in [heat, wave]')
 
@@ -41,7 +40,7 @@ light_data = np.array([
 ], dtype=np.float32)
 
 # Settings
-methods = laplace.approx_methods()
+methods = msig.approx_methods()
 signature_types = ['heat', 'wave']
 current_vertex = 0
 current_method_id = methods.index(args.approx)
@@ -52,9 +51,9 @@ window.set_active()
         
 # Initialize signature extractor
 if args.laplace is not None:
-    extractor = signature.SignatureExtractor(path=args.laplace)
+    extractor = msig.SignatureExtractor(path=args.laplace)
 else:
-    extractor = signature.SignatureExtractor(obj.mesh, args.n_basis, args.approx)
+    extractor = msig.SignatureExtractor(obj.mesh, args.n_basis, args.approx)
 
 def update_viz(vid):
     cmap = cm.get_cmap("viridis")
