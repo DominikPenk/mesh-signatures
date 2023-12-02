@@ -14,10 +14,11 @@ The core functionality is implemented in the two files [signature.py](signature.
 You can easily compute the signatures of every vertex in a mesh like this:
 ```python
 import trimesh
+import msig
 
 mesh = trimesh.load("./dragon.obj")
 # Compute 100 eigen vectors using laplace-beltrami
-extractor = SignatureExtractor(mesh, 100, approx='beltrami') 
+extractor = msig.SignatureExtractor(mesh, 100, approx='beltrami') 
 # extractor = SignatureExtractor(path="./dragon.npz")
 
 extractor.save("./dragon.npz") # Store eigen spectrum
@@ -76,6 +77,7 @@ The visualization script requieres
 - [pyimgui](https://github.com/swistakm/pyimgui)
 - [imgui_datascience](https://github.com/pthom/imgui_datascience) (only used in [hamiltonian.py](hamiltonian.py))
 - [matplotlib](https://matplotlib.org/)
+- [imageio](https://github.com/imageio/imageio)
 
 ## References
 - [A Concise and Provably Informative Multi-Scale Signature Based on Heat Diffusion](http://www.lix.polytechnique.fr/~maks/papers/hks.pdf), *Jian Sun et al.*
