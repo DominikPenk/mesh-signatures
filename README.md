@@ -1,6 +1,6 @@
 # Mesh Signatures
 
-**Disclaimer**: *The project is no longer maintained by me*. It was implemented years ago during my PhD. By now, I have forgotten most of the theory and details of the implementation. So, fixing bugs is a time investment I am not willing to make right now.
+🚩 **Disclaimer**: *The project is no longer maintained by me*. It was implemented years ago during my PhD. By now, I have forgotten most of the theory and details of the implementation. So, fixing bugs is a time investment I am not willing to make right now.
 
 This is a small project implementing mesh signatures for triangle meshes in python.
 We currently implement two signatures:
